@@ -11,8 +11,8 @@ logging.basicConfig(level=logging.DEBUG)
 app = AsyncApp()
 CHANNEL = os.environ.get("CHANNEL")
 international_lead = os.environ.get("INTERNATIONAL_ID")
-east_lead = os.environ.get("WEST_ID")
-west_lead = os.environ.get("EAST_ID")
+west_lead = os.environ.get("WEST_ID")
+east_lead = os.environ.get("EAST_ID")
 
 # @app.shortcut() decorator for allowing user to trigger a global shortcut that will open a modal with CE Request form 
 @app.shortcut({"callback_id": "ce_request", "type": "shortcut"})
