@@ -9,7 +9,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Initializes your app with your bot token and signing secret
 app = AsyncApp()
-CHANNEL = os.environ.get("CHANNEL", "C01RH5BFZJ4")
+CHANNEL = os.environ.get("CHANNEL")
+international_lead = os.environ.get("INTERNATIONAL_ID")
+east_lead = os.environ.get("WEST_ID")
+west_lead = os.environ.get("EAST_ID")
 
 # @app.shortcut() decorator for allowing user to trigger a global shortcut that will open a modal with CE Request form 
 @app.shortcut({"callback_id": "ce_request", "type": "shortcut"})
@@ -67,7 +70,21 @@ async def handle_submission(ack, body, client, view, logger):
 		logger.error(err_msg)
 	finally:
    		# Message the channel
-		await client.chat_postMessage(channel=CHANNEL, blocks=channel_msg)
+		channel_post = await client.chat_postMessage(channel=CHANNEL, blocks=channel_msg)
+		logger.info("CHANNEL POST SUCCESSFUL")
+		msg_link = await client.chat_getPermalink(channel=CHANNEL, message_ts=channel_post["ts"])
+
+		user_msg = f'You have a new request for CE. Please review opp submission details and select a CE :  {msg_link["permalink"]}'
+		logger.info(msg_link)
+		if region == "Americas - West" or region == "Americas - West":
+			await client.chat_postMessage(channel=west_lead, text=user_msg)
+		elif region == "Americas - East":
+			await client.chat_postMessage(channel=east_lead, text=user_msg)
+		else:
+			await client.chat_postMessage(channel=international_lead, text=user_msg)
+    		
+    			
+
 
 
 #Replies to message of CE request from with the name of the CE that has been selected
@@ -75,7 +92,7 @@ async def handle_submission(ack, body, client, view, logger):
 async def select_user(ack, action,client,body, respond,logger):
     
 	#Set message with CE mention
-	msg = f"You selected <@{action['selected_user']}>"
+	msg = f"<@{action['selected_user']}> you have been assigned to this opp. Please review the above details and touch base with the AE for next steps."
 
 	select_user = action['selected_user']
 	
@@ -87,7 +104,7 @@ async def select_user(ack, action,client,body, respond,logger):
 
 	try:
 		msg_link = await client.chat_getPermalink(channel=CHANNEL, message_ts=msg_ts)
-		user_msg = f'you have been selected as CE for {msg_link["permalink"]}'
+		user_msg = f'you have been assigned to this opp. Please review the details within the link and touch base with the AE for next steps. {msg_link["permalink"]}'
 	except Exception as e:
    		# Handle error
 		err_msg = f"There was an error geting the link to message: {e}"

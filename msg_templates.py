@@ -194,7 +194,8 @@ def ce_request_form_template(user ):
 				"type": "plain_text",
 				"text": "Running Notes Link",
 				"emoji": True
-			}
+			},
+			"optional": True
 		},
 		{
 			"type": "input",
