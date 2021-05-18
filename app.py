@@ -1,6 +1,12 @@
 import os 
 import logging
 from datetime import datetime
+import json
+import asyncio
+import aiohttp
+
+
+from slack_bolt.request.async_request import AsyncBoltRequest
 from msg_templates import ce_request_form_template, ce_request_submission_success__template,denial_form_template
 from slack_bolt.async_app import AsyncApp
 
@@ -89,7 +95,7 @@ async def handle_submission(ack, body, client, view, logger):
 
 #Replies to message of CE request from with the name of the CE that has been selected
 @app.action("users_select-action")
-async def select_user(ack, action,client,body, respond,logger):
+async def select_user(ack, action,client,body,logger):
     
 	#Set message with CE mention
 	msg = f"<@{action['selected_user']}> you have been assigned to this opp. Please review the above details and touch base with the AE for next steps."
@@ -99,11 +105,20 @@ async def select_user(ack, action,client,body, respond,logger):
 	# Acknowledge user selection
 	await ack()
 
+	#Retrive Opp ID
+	opp_field = body['message']['blocks'][2]['fields'][4]['text'].split('/')
+	opp_id = opp_field[-2]
+
 	#timestamp for when the request for CE was made so that the bot knows what message to reply to
 	msg_ts = body['container']['message_ts']
 
 	try:
 		msg_link = await client.chat_getPermalink(channel=CHANNEL, message_ts=msg_ts)
+		profile = await client.users_profile_get(user=select_user)
+		email = profile['profile']['email']
+		url = os.environ.get("ZAP")
+		payload = { "sfrec" :  {"id":f'{opp_id}',"email": f'{email}'}}
+		headers = {'content-type': 'application/json'}
 		user_msg = f'you have been assigned to this opp. Please review the details within the link and touch base with the AE for next steps. {msg_link["permalink"]}'
 	except Exception as e:
    		# Handle error
@@ -111,9 +126,15 @@ async def select_user(ack, action,client,body, respond,logger):
 		logger.error(err_msg)
 
 	finally:
-		#Send reply message with CE mention
+		# Send reply message with CE mention
 		await client.chat_postMessage(channel=CHANNEL, text=msg, thread_ts=msg_ts)
 		await client.chat_postMessage(channel=select_user, text=user_msg)
+		#Assign CE to Opp
+		headers = {'content-type': 'application/json'}
+		async with aiohttp.request('POST', url,data = json.dumps(payload),headers = headers) as resp:
+			assert resp.status
+			logger.info(await resp.json())
+		
   
 
 # is triggered with approve button is clicked. Will react with a check mark emoji to CE request and notify requester
@@ -197,7 +218,6 @@ async def handle_denial_submission(ack, body, client, view, logger):
 
 
 
-
 # Start your app
 if __name__ == "__main__":
-    app.start(port=int(os.environ.get("PORT", int(os.environ.get("PORT", 3000)))))
+	app.start(port=int(os.environ.get("PORT", int(os.environ.get("PORT", 3000)))))
